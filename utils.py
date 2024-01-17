@@ -1,7 +1,7 @@
 """Utilities for handling backend functions."""
 import pickle
 import threading
-from tkinter import Tk, filedialog, messagebox, ttk
+from tkinter import Tk, filedialog, messagebox, ttk, simpledialog
 from tkinter.constants import S
 
 import numpy as np
@@ -206,33 +206,35 @@ class WindowHandler:
 
 
 def saveImage(window):
+
     """Save current image."""
     imageSurface = window.imsurf
     overlays = window.overlays
     exthandler = window.exthandler
     Tk().withdraw()
     file = filedialog.asksaveasfilename(
-        filetypes=[("PNG Image", "*.png"),("TIFF Image", "*.tiff"),("CSV File", "*.csv")]
+        filetypes=[("CSV File", "*.csv")]
     )
+    
 
     if file:
         filename = file.split("/")[-1]
 
-        if filename.endswith('.tiff'):
-            if (messagebox.askquestion("Before we proceed",f"Are you sure you want to export image as {filename} with Kelvin values and not a false colour mapping?") == "yes"):
-                tiffExport(window, file)
-            else:
-                messagebox.showinfo("Export Cancelled", f"You have cancelled the process of exporting {filename}")
+        # if filename.endswith('.tiff'):
+        # if (messagebox.askquestion("Before we proceed",f"Are you sure you want to export image as {filename} with Kelvin values and not a false colour mapping?") == "yes"):
+        #     tiffExport(window, file)
+        # else:
+        #     messagebox.showinfo("Export Cancelled", f"You have cancelled the process of exporting {filename}")
 
-        elif filename.endswith('.csv'):
-            if (messagebox.askquestion("Before we proceed",f"Are you sure you want to export image as {filename} with Kelvin values and not a false colour mapping?") == "yes"):
-                csvExport(window, file)
-            else:
-                messagebox.showinfo("Export Cancelled", f"You have cancelled the process of exporting {filename}")
+    # elif filename.endswith('.csv'):
+        # if (messagebox.askquestion("Before we proceed",f"Are you sure you want to export image as {filename} with Kelvin values and not a false colour mapping?") == "yes"):
+        csvExport(window, file)
+        # else:
+        #     messagebox.showinfo("Export Cancelled", f"You have cancelled the process of exporting {filename}")
 
-        else:
-            print(file)
-            pngExport(window, file, imageSurface, overlays, exthandler)
+    # else:
+        # print(file)
+        # pngExport(window, file, imageSurface, overlays, exthandler)
 
 def pngExport(window, filename, imageSurface, overlays, exthandler):
     """Function to export image as .PNG format
@@ -319,5 +321,7 @@ def csvExport(window, filename):
 def openImage():
     """Open new image."""
     Tk().withdraw()
-    filename = filedialog.askopenfilename(title="Open Thermal Image")
-    return filename
+    filenames = filedialog.askopenfilenames(title="Open Thermal Image", filetypes=[("JPEG Files", "*.jpg"), ("All Files", "*.*")])
+    thresh = simpledialog.askfloat("Hotspot threshold", "Hotspot threshold  in °C:")
+
+    return filenames, thresh
