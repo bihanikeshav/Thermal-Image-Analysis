@@ -5,14 +5,14 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
 
 # Folder containing CSV files
-folder_path = 'imgs'  # Replace with the path to your folder
-
+folder_path = 'E:\Downloads\LT_651-20240430T055423Z-001\LT_651'  # Replace with the path to your folder
 # Set the hotspot threshold
-hotspot_threshold = 40  # Adjust the threshold as needed
+hotspot_threshold = 33  # Adjust the threshold as needed
 
 # Iterate through CSV files in the folder
 for filename in os.listdir(folder_path):
     if filename.endswith(".csv"):
+        print("reading")
         # Read the CSV file into a DataFrame
         csv_path = os.path.join(folder_path, filename)
         df = pd.read_csv(csv_path, header=None)
@@ -21,7 +21,7 @@ for filename in os.listdir(folder_path):
 
         # Check if there are hotspots in the image
         max=np.max(data)
-        if max >= hotspot_threshold:
+        if max >= 0:
             # Create a figure and axes
             fig, ax = plt.subplots()
 
@@ -34,4 +34,6 @@ for filename in os.listdir(folder_path):
 
             # Show the plot for each image
             plt.title(f'Image with Hotspots: {filename}, Max temp: {round(max, 2)}°C')
-            plt.show()  
+            plt.savefig('Res_'+filename.split('.')[0]+'.jpg')
+            # plt.show()  
+            plt.close()

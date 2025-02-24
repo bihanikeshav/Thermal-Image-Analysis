@@ -754,9 +754,14 @@ if __name__ == "__main__":
     import pandas as pd
     import numpy as np
     import matplotlib.pyplot as plt
+    import matplotlib.patches as patches
+
     from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
     NEXT_BUTTON_RECT = pygame.Rect(20, 20, 100, 40)
     MAP_BUTTON_RECT = pygame.Rect(20, 80, 150, 40)
+    TEMP_BUTTON_RECT = pygame.Rect(150, 20, 100, 40)
+    global dynamic
+    dynamic="30"
     current_file_index = 0  
     surface = pygame.display.set_mode(WINDOW_SIZE)
     pygame.display.set_caption("Detect Thermal Image Analysis Tool")
@@ -766,7 +771,18 @@ if __name__ == "__main__":
     NEW_FILE = True
     filenames, hotspot_threshold = openImage()
     font = pygame.font.Font(None, 36)
+    x_index = 0
+    y_index = 0
 
+
+    for file in filenames:
+        image = ThermalImage(file, camera_manufacturer="flir")
+        max=np.max(image.thermal_np)
+        if max >= 33:
+            np.savetxt(file.split(".")[0] + ".csv", image.thermal_np, delimiter=",")
+        
+        print("-")
+    print("done")
     while not done:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -782,9 +798,18 @@ if __name__ == "__main__":
                     open_google_maps(latitude, longitude)
                 elif plot_rect.collidepoint(mouse_pos):
                     # Get the mouse position on the Matplotlib plot
-                    x_index, y_index = get_mouse_position_on_plot(mouse_pos, plot_rect, data.shape)
-                    print(f"Temperature at position ({x_index}, {y_index}): {data[y_index, x_index]}")
-                    render_text(surface, f"Temperature: {data[y_index, x_index]}", (500, 10), font, (255, 255, 255))
+                    # x_index, y_index = get_mouse_position_on_plot(mouse_pos, plot_rect, data.shape)
+                    x_index=int((mouse_pos[0]-150)/1.6)
+                    y_index=int((mouse_pos[1]-175)/1.6)
+                    # y_index=abs(y_index-348)
+                    if x_index>=len(data[0])-1:
+                        x_index=len(data[0])-1
+                    if y_index>=len(data)-1:
+                        y_index=len(data)-1
+                    print(f"Clicked at position ({x_index}, {y_index})")
+                    # surface.blit(Window.fonts[2].render("Next", 1, (0, 0, 0)), (90, 90))
+                    dynamic=str(round(data[y_index, x_index], 2))
+                    # render_text(surface, f"Temperature: {data[y_index, x_index]}", (500, 10), font, (255, 255, 255))
 
 
         if NEW_FILE:
@@ -796,14 +821,21 @@ if __name__ == "__main__":
                 newwindow = None
 
                 try:
-                    image = ThermalImage(filename, camera_manufacturer="FLIR")
-                    latitude, longitude = extract_gps_coords(filename)
+                    image = ThermalImage(filename, camera_manufacturer="DJI")
+                    try:
+                        latitude, longitude = extract_gps_coords(filename)
+                    except:
+                        latitude, longitude = 0,0
 
                     # if latitude is not None and longitude is not None:
                     #     print(f"GPS Coordinates: {latitude}, {longitude}")
                 except Exception as err:
                     image = ThermalImage(filename, camera_manufacturer="DJI")
-                    latitude, longitude = extract_gps_coords(filename)
+                    # latitude, longitude = extract_gps_coords(filename)
+                    try:
+                        latitude, longitude = extract_gps_coords(filename)
+                    except:
+                        latitude, longitude = 0,0
 
                     # if latitude is not None and longitude is not None:
                     #     print(f"GPS Coordinates: {latitude}, {longitude}")
@@ -827,156 +859,36 @@ if __name__ == "__main__":
                     # Add a colorbar for each image
                     cbar = plt.colorbar(im, ax=ax)
                     cbar.set_label('Temperature')
+                    max_index = np.unravel_index(np.argmax(data), data.shape)
+                    # Draw a circle around the maximum value
+                    circle_radius = 5  # Set your desired circle radius
+                    circle = patches.Circle((max_index[1], abs(348-max_index[0])), circle_radius, edgecolor='k', linewidth=2, facecolor='none')
+                    ax.add_patch(circle)
+
+                    ax.plot(x_index, abs(348-y_index), color='white', marker='x', markersize=10, markeredgewidth=2)
 
                     # Show the plot for each image
-                    plt.title(f'Image with Hotspots: {filename}, Max temp: {round(max, 1)}°')
+                    flast=filename.split('/')[-1]
+                    plt.title(f'Image with Hotspots: {flast}, Max temp: {round(max, 1)}°')
                     plt.savefig('Res_'+filename.split('/')[-1])
                     plt.close()
                     # plt.show()
                 # Draw "Next" button
-                image = pygame.image.load('Res_'+filename.split('/')[-1])
-                plot_rect = surface.blit(image, (0, 0))
+                    image = pygame.image.load('Res_'+filename.split('/')[-1])
+                    plot_rect = surface.blit(image, (0, 0))
 
-                pygame.draw.rect(surface, (0, 255, 0), NEXT_BUTTON_RECT)
-                surface.blit(Window.fonts[2].render("Next", 1, (0, 0, 0)), (30, 30))
+                    pygame.draw.rect(surface, (0, 255, 0), NEXT_BUTTON_RECT)
+                    surface.blit(Window.fonts[2].render("Next", 1, (0, 0, 0)), (30, 30))
 
-                # Draw "Google Maps" button
-                pygame.draw.rect(surface, (0, 255, 0), MAP_BUTTON_RECT)
-                surface.blit(Window.fonts[2].render("Google Maps", 1, (0, 0, 0)), (30, 90))
+                    # Draw "Google Maps" button
+                    pygame.draw.rect(surface, (0, 255, 0), MAP_BUTTON_RECT)
+                    surface.blit(Window.fonts[2].render("Google Maps", 1, (0, 0, 0)), (30, 90))
 
-                pygame.display.flip()
-                clock.tick(30)
+                    pygame.draw.rect(surface, (0, 255, 255), TEMP_BUTTON_RECT)
+                    surface.blit(Window.fonts[2].render("Temp: "+dynamic, 1, (0, 0, 0)), (160, 30))
+                    pygame.display.flip()
+                    clock.tick(30)
 
     pygame.quit()
 
 
-
-
-
-
-
-    # pygame.display.set_caption("Detect Thermal Image Analysis Tool")
-    # # pygame.display.set_icon(pygame.image.load("./assets/icon_gray.png"))
-    # surface = pygame.display.set_mode(WINDOW_SIZE)
-    # surface.blit(Window.fonts[2].render("Loading...", 1, (255, 255, 255)), (460, 275))
-    # pygame.display.update()
-
-    # clock = pygame.time.Clock()
-
-    # done = False
-    # NEW_FILE = True
-    # window = None
-
-    # while not done: 
-    #     if NEW_FILE:
-    #         filenames, hotspot_threshold = openImage()
-    #         for filename in filenames:
-    #             if filename:
-    #                 surface.fill((0, 0, 0))
-    #                 surface.blit(
-    #                     Window.fonts[2].render("Loading...", 1, (255, 255, 255)), (460, 275)
-    #                 )
-    #                 pygame.display.update()
-    #                 newwindow = None
-    #                 try:
-    #                     if filename.split(".")[-1] == "pkl":
-    #                         newwindow = Window(filename=filename)
-    #                     else:
-    #                         try:
-    #                             image = ThermalImage(filename, camera_manufacturer="FLIR")
-    #                         except Exception:
-    #                             image = ThermalImage(filename, camera_manufacturer="DJI")
-    #                             # print(image.gps_latitude)
-    #                             # print(image.gps_longitude)
-    #                     np.savetxt(filename.split(".")[0]+".csv", image.thermal_np, delimiter=",")
-    #                             # Read the CSV file into a DataFrame
-    #                     # csv_path = os.path.join(folder_path, filename)
-    #                     df = pd.read_csv(filename.split(".")[0]+".csv", header=None)
-    #                     # Reshape the DataFrame into a 2D NumPy array
-    #                     data = df.values
-
-    #                     # Check if there are hotspots in the image
-    #                     max=np.max(data)
-    #                     if max >= hotspot_threshold:
-    #                         # Create a figure and axes
-    #                         fig, ax = plt.subplots(figsize=(16, 12))
-
-    #                         # Plot the image using the "jet" colormap
-    #                         im = ax.imshow(data, cmap='jet', extent=[0, data.shape[1], 0, data.shape[0]], origin='upper')
-
-    #                         # Add a colorbar for each image
-    #                         cbar = plt.colorbar(im, ax=ax)
-    #                         cbar.set_label('Temperature')
-
-    #                         # Show the plot for each image
-    #                         plt.title(f'Image with Hotspots: {filename}, Max temp: {round(max, 1)}°F')
-    #                         plt.savefig('Res_'+filename.split('/')[-1])
-    #                         plt.show()
-
-    #                         # plot_surface = pygame.Surface(WINDOW_SIZE)
-    #                         # plot_graph(plot_surface, data)
-
-    #                         # # Blit the Matplotlib plot onto the Pygame window
-    #                         # surface.blit(plot_surface, (0, 0))
-
-    #                         # pygame.display.flip()
-
-    #                         # newwindow = Window(thermal_image=image)
-    #                 except Exception as err:
-    #                     print(f"Exception: {err}")
-    #                     showwarning(title="Error", message="Invalid file selected.")
-    #             #     if newwindow is not None:
-    #             #         if window is not None:
-    #             #             window.exthandler.killThreads()
-    #             #         window = newwindow
-    #             # if not window:
-    #             #     sys.exit(0)
-    #             # NEW_FILE = False
-    #         folder_path=filenames[0].split("/")[-2]
-    #         done = True
-
-    # # for filename in os.listdir(folder_path):
-    # #     if filename.endswith(".csv"):
-    # #         # Read the CSV file into a DataFrame
-    # #         csv_path = os.path.join(folder_path, filename)
-    # #         df = pd.read_csv(csv_path, header=None)
-    # #         # Reshape the DataFrame into a 2D NumPy array
-    # #         data = df.values
-
-    # #         # Check if there are hotspots in the image
-    # #         max=np.max(data)
-    # #         if max >= hotspot_threshold:
-    # #             # Create a figure and axes
-    # #             fig, ax = plt.subplots()
-
-    # #             # Plot the image using the "jet" colormap
-    # #             im = ax.imshow(data, cmap='jet', extent=[0, data.shape[1], 0, data.shape[0]], origin='upper')
-
-    # #             # Add a colorbar for each image
-    # #             cbar = plt.colorbar(im, ax=ax)
-    # #             cbar.set_label('Temperature')
-
-    # #             # Show the plot for each image
-    # #             plt.title(f'Image with Hotspots: {filename}, Max temp: {round(max, 1)}°C')
-    # #             plt.show()
-
-    # #     for event in pygame.event.get():
-    # #         if event.type == pygame.QUIT:
-    # #             done = True
-    # #         if event.type == pygame.KEYDOWN:
-    # #             if event.key == ord("s"):
-    # #                 index = 0
-    # #                 while os.path.isfile(f"{index}.png"):
-    # #                     index += 1
-    # #                 pygame.image.save(surface, f"{index}.png")
-    # #                 print(f"Saved {index}.png")
-
-    # #         window.process(event)
-
-    # #     window.update(clock.tick(60) / 1000.0)
-    # #     window.draw(surface)
-
-    # #     pygame.display.update()
-
-    # # # For the threads to close before end of program
-    # # window.exthandler.killThreads()
